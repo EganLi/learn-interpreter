@@ -30,6 +30,19 @@ class Token
 {
 public:
     Token(TYPE t, VALUE v = VALUE()): type(t), value(v) {}
+    Token& operator=(const Token& t)
+    {
+        this->type = t.type;
+        if(OP == this->type)
+        {
+            this->value.oper = t.value.oper;
+        }
+        else
+        {
+            this->value.iValue = t.value.iValue;
+        }
+        return *this;
+    }
     TYPE getType()
     {
         return type;
@@ -37,6 +50,10 @@ public:
     VALUE getValue()
     {
         return value;
+    }
+    void setValue(VALUE v)
+    {
+        this->value = v;
     }
 private:
     TYPE type;
@@ -49,10 +66,23 @@ public:
     Interpreter(string str): orgTest(str), pos(0) {}
     int expr()
     {
-        Token left = getNextToken();
-        Token op = getNextToken();
-        Token right = getNextToken();
-        return compute(left, right, op);
+        Token omitOperand = getNextToken();
+        Token oper = getNextToken();
+        Token tmp = Token(END);
+        do {
+            tmp = getNextToken();
+            if(INTEGER == tmp.getType())
+            {
+                VALUE v;
+                v.iValue = compute(omitOperand, tmp, oper);
+                omitOperand.setValue(v);
+            }
+            else if(OP == tmp.getType())
+            {
+                oper.setValue(tmp.getValue());
+            }
+        } while(END != tmp.getType());
+        return omitOperand.getValue().iValue;
     }
     int test(string str)
     {
@@ -155,6 +185,9 @@ static void test_parse()
     EXPECT_EQ_INT(10, test.test("12 - 2"));
     EXPECT_EQ_INT(20, test.test("4* 5"));
     EXPECT_EQ_INT(4, test.test("8/2"));
+    EXPECT_EQ_INT(15, test.test("1 +2 +3+4 + 5"));
+    EXPECT_EQ_INT(6, test.test("1 *2 +3-4 + 5"));
+    EXPECT_EQ_INT(2, test.test("4/2 *3 +1 - 5"));
 }
 
 int main()
