@@ -190,6 +190,7 @@ static void test_parse()
     EXPECT_EQ_INT(2, test.test("4/2 *3 +1 - 5"));
 }
 
+/*
 int main()
 {
     test_parse();
@@ -197,3 +198,4 @@ int main()
 
     return  0;
 }
+*/

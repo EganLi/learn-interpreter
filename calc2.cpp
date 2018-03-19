@@ -9,6 +9,8 @@ enum TYPE
 {
     END,
     OP,
+    LPAREN,
+    RPAREN,
     INTEGER,
 };
 
@@ -64,6 +66,8 @@ class Token
             {
                 case END:       value.isUsed = (bool)v;     break;
                 case OP:        value.oper = (OPERATION)v;  break;
+                case LPAREN:    value.isUsed = true;       break;
+                case RPAREN:    value.isUsed = true;       break;
                 case INTEGER:   value.iValue = v;           break;
             }
         }
@@ -118,6 +122,12 @@ class Lexer
                     case '+':   pos++;
                                 return Token(OP, (OPERATION)op);
                 }
+
+                switch (orgStr[pos])
+                {
+                    case '(':   pos++; return Token(LPAREN, true);
+                    case ')':   pos++; return Token(RPAREN, true);
+                }
                 break;
             }
 
@@ -149,31 +159,29 @@ class Parser
         int factor()
         {
             Token tmp = token;
-            eat(INTEGER);
-            return tmp.getValue().iValue;
+            int ret = 0;
+            if (INTEGER == token.getType())
+            {
+                eat(INTEGER);
+                return tmp.getValue().iValue;
+            }
+            else if (LPAREN == token.getType())
+            {
+                eat(LPAREN);
+                ret = expr();
+                eat(RPAREN);
+                return ret;
+            }
+            return ret;
         }
-        int expr()
+        int term()
         {
             int ret = factor();
 
             while (END != token.getType())
             {
-                /*
-                if (INTEGER == token.getType())
-                {
-                    break;
-                }
-                */
                 switch (token.getValue().oper)
                 {
-                    case ADD:
-                        eat(OP);
-                        ret += factor();
-                        break;
-                    case SUB:
-                        eat(OP);
-                        ret -= factor();
-                        break;
                     case MUL:
                         eat(OP);
                         ret *= factor();
@@ -183,6 +191,31 @@ class Parser
                         ret /= factor();
                         break;
                     default:
+                        return ret;
+                        break;
+                }
+            }
+
+            return ret;
+        }
+        int expr()
+        {
+            int ret = term();
+
+            while ((END != token.getType()) && (OP == token.getType()))
+            {
+                switch (token.getValue().oper)
+                {
+                    case ADD:
+                        eat(OP);
+                        ret += term();
+                        break;
+                    case SUB:
+                        eat(OP);
+                        ret -= term();
+                        break;
+                    default:
+                        return ret;
                         break;
                 }
             }
@@ -221,6 +254,13 @@ static void test_parse()
     EXPECT_EQ_INT(15, test.test("1 +2 +3+4 + 5"));
     EXPECT_EQ_INT(6, test.test("1 *2 +3-4 + 5"));
     EXPECT_EQ_INT(2, test.test("4/2 *3 +1 - 5"));
+    EXPECT_EQ_INT(8, test.test("1 +2 * 3 -4+5"));
+    EXPECT_EQ_INT(25, test.test("1 *2 + 3 + 4*5"));
+    EXPECT_EQ_INT(5, test.test("4/2 +3 -1 / 5"));
+    EXPECT_EQ_INT(14, test.test("1*2*(3+4)"));
+    EXPECT_EQ_INT(1, test.test("4/(2+2)"));
+    EXPECT_EQ_INT(1, test.test("4/(2*2)"));
+    EXPECT_EQ_INT(32, test.test("((1+2)*(3+4)-5)*2"));
 }
 
 int main()
